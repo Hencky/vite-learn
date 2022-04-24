@@ -10,7 +10,7 @@ export const hookConfigResolved: () => Plugin = () => {
     },
     transform(code, id) {
       // 其他钩子可以拿到config
-      console.log(config);
+      // console.log(config);
     },
   };
 };

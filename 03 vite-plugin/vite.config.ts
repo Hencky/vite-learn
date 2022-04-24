@@ -1,9 +1,19 @@
 import { defineConfig, type UserConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import pluginDemo from './plugins/demo';
-import { hookConfig, hookConfigResolved } from './plugins';
+import {
+  hookConfig,
+  hookConfigResolved,
+  hookTransformIndexHtml,
+} from './plugins';
 
 // https://vitejs.dev/config/
 export default defineConfig({
-  plugins: [react(), pluginDemo(), hookConfig(), hookConfigResolved()],
+  plugins: [
+    react(),
+    pluginDemo(),
+    hookConfig(),
+    hookConfigResolved(),
+    hookTransformIndexHtml(),
+  ],
 });
