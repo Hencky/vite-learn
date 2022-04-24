@@ -1,10 +1,10 @@
 import path from 'path';
 import { type Plugin } from 'vite';
 
-const configHookPlugin: () => Plugin = () => {
+export const hookConfig: () => Plugin = () => {
   return {
     name: 'vite-pluign-hook-config',
-    config() {
+    config(config, { command, mode }) {
       return {
         resolve: {
           alias: {
@@ -15,5 +15,3 @@ const configHookPlugin: () => Plugin = () => {
     },
   };
 };
-
-export { configHookPlugin };

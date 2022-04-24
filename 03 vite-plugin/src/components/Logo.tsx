@@ -6,7 +6,7 @@ interface LogoProps {}
 const Logo: React.FC<LogoProps> = () => {
   return (
     <div>
-      <img src={logo} alt="" />
+      <img width={40} height={40} src={logo} alt="" />
     </div>
   );
 };
