@@ -2,9 +2,9 @@ import { useState } from 'react';
 import logo from './logo.svg';
 import './App.css';
 
-import helloPMS from 'helloPMS';
+import PMS from 'PMS';
 
-console.log(helloPMS);
+console.log(PMS);
 
 function App() {
   const [count, setCount] = useState(0);

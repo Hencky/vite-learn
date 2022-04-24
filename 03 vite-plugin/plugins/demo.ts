@@ -5,14 +5,14 @@ const pluginDemo: () => Plugin = () => {
     name: 'my-example',
     resolveId(source) {
       // 是否处理当前的请求
-      if (source === 'helloPMS') {
+      if (source === 'PMS') {
         return source;
       }
       return null;
     },
     load(id) {
-      if (id === 'helloPMS') {
-        return `export default 'Hello PMS!'`;
+      if (id === 'PMS') {
+        return `export default 'PMS!'`;
       }
       return null;
     },

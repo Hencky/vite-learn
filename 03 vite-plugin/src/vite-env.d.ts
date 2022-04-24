@@ -1,5 +1,6 @@
 /// <reference types="vite/client" />
 
-declare module 'helloPMS' {
-  export default 'Hello PMS!';
+const PMSType = 'PMS';
+declare module 'PMS' {
+  export default typeof PMSType;
 }
