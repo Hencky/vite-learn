@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import logo from './logo.svg';
+import { merge } from 'lodash-es';
 import './App.css';
-
 
 function App() {
   const [count, setCount] = useState(0);
+
+  console.log('merge', merge({ a: 1 }, { b: 2 }));
 
   return (
     <div className="App">
