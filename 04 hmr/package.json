@@ -1,0 +1,15 @@
+{
+  "name": "04-hmr",
+  "private": true,
+  "version": "0.0.0",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "typescript": "^4.6.3",
+    "vite": "^2.9.5"
+  }
+}
