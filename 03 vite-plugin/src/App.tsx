@@ -1,4 +1,7 @@
 import { HookConfig } from './plugin-demo/hook-config';
+import pms from 'PMS';
+
+console.log('pms', pms);
 
 function App() {
   return (
