@@ -1,11 +1,11 @@
-import fs from 'fs'
-import path from 'path'
-import _debug from 'debug'
-import colors from 'picocolors'
-import { createHash } from 'crypto'
-import type { BuildOptions as EsbuildBuildOptions } from 'esbuild'
-import { build } from 'esbuild'
-import type { ResolvedConfig } from '../config'
+import fs from 'fs';
+import path from 'path';
+import _debug from 'debug';
+import colors from 'picocolors';
+import { createHash } from 'crypto';
+import type { BuildOptions as EsbuildBuildOptions } from 'esbuild';
+import { build } from 'esbuild';
+import type { ResolvedConfig } from '../config';
 import {
   createDebugger,
   emptyDir,
@@ -13,31 +13,31 @@ import {
   normalizePath,
   writeFile,
   flattenId,
-  normalizeId
-} from '../utils'
-import { esbuildDepPlugin } from './esbuildDepPlugin'
-import { init, parse } from 'es-module-lexer'
-import { scanImports } from './scan'
-import { transformWithEsbuild } from '../plugins/esbuild'
-import { performance } from 'perf_hooks'
+  normalizeId,
+} from '../utils';
+import { esbuildDepPlugin } from './esbuildDepPlugin';
+import { init, parse } from 'es-module-lexer';
+import { scanImports } from './scan';
+import { transformWithEsbuild } from '../plugins/esbuild';
+import { performance } from 'perf_hooks';
 
-export const debuggerViteDeps = createDebugger('vite:deps')
-const debug = debuggerViteDeps
-const isDebugEnabled = _debug('vite:deps').enabled
+export const debuggerViteDeps = createDebugger('vite:deps');
+const debug = debuggerViteDeps;
+const isDebugEnabled = _debug('vite:deps').enabled;
 
-const jsExtensionRE = /\.js$/i
-const jsMapExtensionRE = /\.js\.map$/i
+const jsExtensionRE = /\.js$/i;
+const jsMapExtensionRE = /\.js\.map$/i;
 
 export type ExportsData = ReturnType<typeof parse> & {
   // es-module-lexer has a facade detection but isn't always accurate for our
   // use case when the module has default export
-  hasReExports?: true
-}
+  hasReExports?: true;
+};
 
 export interface OptimizedDeps {
-  metadata: DepOptimizationMetadata
-  scanProcessing?: Promise<void>
-  registerMissingImport: (id: string, resolved: string) => OptimizedDepInfo
+  metadata: DepOptimizationMetadata;
+  scanProcessing?: Promise<void>;
+  registerMissingImport: (id: string, resolved: string) => OptimizedDepInfo;
 }
 
 export interface DepOptimizationOptions {
@@ -51,17 +51,17 @@ export interface DepOptimizationOptions {
    * (https://github.com/mrmlnc/fast-glob#basic-syntax) that are relative from
    * vite project root. This will overwrite default entries inference.
    */
-  entries?: string | string[]
+  entries?: string | string[];
   /**
    * Force optimize listed dependencies (must be resolvable import paths,
    * cannot be globs).
    */
-  include?: string[]
+  include?: string[];
   /**
    * Do not optimize these dependencies (must be resolvable import paths,
    * cannot be globs).
    */
-  exclude?: string[]
+  exclude?: string[];
   /**
    * Options to pass to esbuild during the dep scanning and optimization
    *
@@ -86,11 +86,11 @@ export interface DepOptimizationOptions {
     | 'outbase'
     | 'outExtension'
     | 'metafile'
-  >
+  >;
   /**
    * @deprecated use `esbuildOptions.keepNames`
    */
-  keepNames?: boolean
+  keepNames?: boolean;
   /**
    * List of file extensions that can be optimized. A corresponding esbuild
    * plugin must exist to handle the specific extension.
@@ -100,43 +100,43 @@ export interface DepOptimizationOptions {
    *
    * @experimental
    */
-  extensions?: string[]
+  extensions?: string[];
   /**
    * Disables dependencies optimizations
    * @default false
    * @experimental
    */
-  disabled?: boolean
+  disabled?: boolean;
 }
 
 export interface DepOptimizationResult {
-  metadata: DepOptimizationMetadata
+  metadata: DepOptimizationMetadata;
   /**
    * When doing a re-run, if there are newly discovered dependendencies
    * the page reload will be delayed until the next rerun so we need
    * to be able to discard the result
    */
-  commit: () => void
-  cancel: () => void
+  commit: () => void;
+  cancel: () => void;
 }
 
 export interface DepOptimizationProcessing {
-  promise: Promise<void>
-  resolve: () => void
+  promise: Promise<void>;
+  resolve: () => void;
 }
 
 export interface OptimizedDepInfo {
-  id: string
-  file: string
-  src?: string
-  needsInterop?: boolean
-  browserHash?: string
-  fileHash?: string
+  id: string;
+  file: string;
+  src?: string;
+  needsInterop?: boolean;
+  browserHash?: string;
+  fileHash?: string;
   /**
    * During optimization, ids can still be resolved to their final location
    * but the bundles may not yet be saved to disk
    */
-  processing?: Promise<void>
+  processing?: Promise<void>;
 }
 
 export interface DepOptimizationMetadata {
@@ -144,29 +144,29 @@ export interface DepOptimizationMetadata {
    * The main hash is determined by user config and dependency lockfiles.
    * This is checked on server startup to avoid unnecessary re-bundles.
    */
-  hash: string
+  hash: string;
   /**
    * The browser hash is determined by the main hash plus additional dependencies
    * discovered at runtime. This is used to invalidate browser requests to
    * optimized deps.
    */
-  browserHash: string
+  browserHash: string;
   /**
    * Metadata for each already optimized dependency
    */
-  optimized: Record<string, OptimizedDepInfo>
+  optimized: Record<string, OptimizedDepInfo>;
   /**
    * Metadata for non-entry optimized chunks and dynamic imports
    */
-  chunks: Record<string, OptimizedDepInfo>
+  chunks: Record<string, OptimizedDepInfo>;
   /**
    * Metadata for each newly discovered dependency after processing
    */
-  discovered: Record<string, OptimizedDepInfo>
+  discovered: Record<string, OptimizedDepInfo>;
   /**
    * OptimizedDepInfo list
    */
-  depInfoList: OptimizedDepInfo[]
+  depInfoList: OptimizedDepInfo[];
 }
 
 /**
@@ -177,41 +177,41 @@ export async function optimizeDeps(
   force = config.server.force,
   asCommand = false
 ): Promise<DepOptimizationMetadata> {
-  const log = asCommand ? config.logger.info : debug
+  const log = asCommand ? config.logger.info : debug;
 
   const cachedMetadata = loadCachedDepOptimizationMetadata(
     config,
     force,
     asCommand
-  )
+  );
   if (cachedMetadata) {
-    return cachedMetadata
+    return cachedMetadata;
   }
-  const depsInfo = await discoverProjectDependencies(config)
+  const depsInfo = await discoverProjectDependencies(config);
 
-  const depsString = depsLogString(Object.keys(depsInfo))
-  log(colors.green(`Optimizing dependencies:\n  ${depsString}`))
+  const depsString = depsLogString(Object.keys(depsInfo));
+  log(colors.green(`Optimizing dependencies:\n  ${depsString}`));
 
-  const result = await runOptimizeDeps(config, depsInfo)
+  const result = await runOptimizeDeps(config, depsInfo);
 
-  result.commit()
+  result.commit();
 
-  return result.metadata
+  return result.metadata;
 }
 
 export function createOptimizedDepsMetadata(
   config: ResolvedConfig,
   timestamp?: string
 ): DepOptimizationMetadata {
-  const hash = getDepHash(config)
+  const hash = getDepHash(config);
   return {
     hash,
     browserHash: getOptimizedBrowserHash(hash, {}, timestamp),
     optimized: {},
     chunks: {},
     discovered: {},
-    depInfoList: []
-  }
+    depInfoList: [],
+  };
 }
 
 export function addOptimizedDepInfo(
@@ -219,52 +219,56 @@ export function addOptimizedDepInfo(
   type: 'optimized' | 'discovered' | 'chunks',
   depInfo: OptimizedDepInfo
 ): OptimizedDepInfo {
-  metadata[type][depInfo.id] = depInfo
-  metadata.depInfoList.push(depInfo)
-  return depInfo
+  metadata[type][depInfo.id] = depInfo;
+  metadata.depInfoList.push(depInfo);
+  return depInfo;
 }
 
 /**
  * Creates the initial dep optimization metadata, loading it from the deps cache
  * if it exists and pre-bundling isn't forced
+ * 预构建缓存判断
  */
 export function loadCachedDepOptimizationMetadata(
   config: ResolvedConfig,
   force = config.server.force,
   asCommand = false
 ): DepOptimizationMetadata | undefined {
-  const log = asCommand ? config.logger.info : debug
+  const log = asCommand ? config.logger.info : debug;
 
   // Before Vite 2.9, dependencies were cached in the root of the cacheDir
   // For compat, we remove the cache if we find the old structure
   if (fs.existsSync(path.join(config.cacheDir, '_metadata.json'))) {
-    emptyDir(config.cacheDir)
+    emptyDir(config.cacheDir);
   }
 
-  const depsCacheDir = getDepsCacheDir(config)
+  const depsCacheDir = getDepsCacheDir(config);
 
+  // config.server.force 设置为true，强制使用依赖预构建
   if (!force) {
-    let cachedMetadata: DepOptimizationMetadata | undefined
+    let cachedMetadata: DepOptimizationMetadata | undefined;
     try {
-      const cachedMetadataPath = path.join(depsCacheDir, '_metadata.json')
+      // 每次预构建之后的关键信息会写到 _metadata.json 中
+      const cachedMetadataPath = path.join(depsCacheDir, '_metadata.json');
       cachedMetadata = parseOptimizedDepsMetadata(
         fs.readFileSync(cachedMetadataPath, 'utf-8'),
         depsCacheDir
-      )
+      );
     } catch (e) {}
     // hash is consistent, no need to re-bundle
+    // 当前计算出的哈希 与 _metadata.json 中的哈希相同，不需要重新构建
     if (cachedMetadata && cachedMetadata.hash === getDepHash(config)) {
-      log('Hash is consistent. Skipping. Use --force to override.')
+      log('Hash is consistent. Skipping. Use --force to override.');
       // Nothing to commit or cancel as we are using the cache, we only
       // need to resolve the processing promise so requests can move on
-      return cachedMetadata
+      return cachedMetadata;
     }
   } else {
-    config.logger.info('Forced re-optimization of dependencies')
+    config.logger.info('Forced re-optimization of dependencies');
   }
 
   // Start with a fresh cache
-  removeDirSync(depsCacheDir)
+  removeDirSync(depsCacheDir);
 }
 
 /**
@@ -275,9 +279,9 @@ export async function discoverProjectDependencies(
   config: ResolvedConfig,
   timestamp?: string
 ): Promise<Record<string, OptimizedDepInfo>> {
-  const { deps, missing } = await scanImports(config)
+  const { deps, missing } = await scanImports(config);
 
-  const missingIds = Object.keys(missing)
+  const missingIds = Object.keys(missing);
   if (missingIds.length) {
     throw new Error(
       `The following dependencies are imported but could not be resolved:\n\n  ${missingIds
@@ -288,41 +292,41 @@ export async function discoverProjectDependencies(
             )}`
         )
         .join(`\n  `)}\n\nAre they installed?`
-    )
+    );
   }
 
-  await addManuallyIncludedOptimizeDeps(deps, config)
+  await addManuallyIncludedOptimizeDeps(deps, config);
 
   const browserHash = getOptimizedBrowserHash(
     getDepHash(config),
     deps,
     timestamp
-  )
-  const discovered: Record<string, OptimizedDepInfo> = {}
+  );
+  const discovered: Record<string, OptimizedDepInfo> = {};
   for (const id in deps) {
-    const entry = deps[id]
+    const entry = deps[id];
     discovered[id] = {
       id,
       file: getOptimizedDepPath(id, config),
       src: entry,
-      browserHash: browserHash
-    }
+      browserHash: browserHash,
+    };
   }
-  return discovered
+  return discovered;
 }
 
 export function depsLogString(qualifiedIds: string[]): string {
   if (isDebugEnabled) {
-    return colors.yellow(qualifiedIds.join(`\n  `))
+    return colors.yellow(qualifiedIds.join(`\n  `));
   } else {
-    const total = qualifiedIds.length
-    const maxListed = 5
-    const listed = Math.min(total, maxListed)
-    const extra = Math.max(0, total - maxListed)
+    const total = qualifiedIds.length;
+    const maxListed = 5;
+    const listed = Math.min(total, maxListed);
+    const extra = Math.max(0, total - maxListed);
     return colors.yellow(
       qualifiedIds.slice(0, listed).join(`, `) +
         (extra > 0 ? `, ...and ${extra} more` : ``)
-    )
+    );
   }
 }
 
@@ -336,19 +340,19 @@ export async function runOptimizeDeps(
 ): Promise<DepOptimizationResult> {
   config = {
     ...config,
-    command: 'build'
-  }
+    command: 'build',
+  };
 
-  const depsCacheDir = getDepsCacheDir(config)
-  const processingCacheDir = getProcessingDepsCacheDir(config)
+  const depsCacheDir = getDepsCacheDir(config);
+  const processingCacheDir = getProcessingDepsCacheDir(config);
 
   // Create a temporal directory so we don't need to delete optimized deps
   // until they have been processed. This also avoids leaving the deps cache
   // directory in a corrupted state if there is an error
   if (fs.existsSync(processingCacheDir)) {
-    emptyDir(processingCacheDir)
+    emptyDir(processingCacheDir);
   } else {
-    fs.mkdirSync(processingCacheDir, { recursive: true })
+    fs.mkdirSync(processingCacheDir, { recursive: true });
   }
 
   // a hint for Node.js
@@ -356,30 +360,30 @@ export async function runOptimizeDeps(
   writeFile(
     path.resolve(processingCacheDir, 'package.json'),
     JSON.stringify({ type: 'module' })
-  )
+  );
 
-  const metadata = createOptimizedDepsMetadata(config)
+  const metadata = createOptimizedDepsMetadata(config);
 
   metadata.browserHash = getOptimizedBrowserHash(
     metadata.hash,
     depsFromOptimizedDepInfo(depsInfo)
-  )
+  );
 
   // We prebundle dependencies with esbuild and cache them, but there is no need
   // to wait here. Code that needs to access the cached deps needs to await
   // the optimizedDepInfo.processing promise for each dep
 
-  const qualifiedIds = Object.keys(depsInfo)
+  const qualifiedIds = Object.keys(depsInfo);
 
   if (!qualifiedIds.length) {
     return {
       metadata,
       commit() {
         // Write metadata file, delete `deps` folder and rename the `processing` folder to `deps`
-        commitProcessingDepsCacheSync()
+        commitProcessingDepsCacheSync();
       },
-      cancel
-    }
+      cancel,
+    };
   }
 
   // esbuild generates nested directory output with lowest common ancestor base
@@ -388,18 +392,18 @@ export async function runOptimizeDeps(
   // 1. flatten all ids to eliminate slash
   // 2. in the plugin, read the entry ourselves as virtual files to retain the
   //    path.
-  const flatIdDeps: Record<string, string> = {}
-  const idToExports: Record<string, ExportsData> = {}
-  const flatIdToExports: Record<string, ExportsData> = {}
+  const flatIdDeps: Record<string, string> = {};
+  const idToExports: Record<string, ExportsData> = {};
+  const flatIdToExports: Record<string, ExportsData> = {};
 
   const { plugins = [], ...esbuildOptions } =
-    config.optimizeDeps?.esbuildOptions ?? {}
+    config.optimizeDeps?.esbuildOptions ?? {};
 
-  await init
+  await init;
   for (const id in depsInfo) {
-    const flatId = flattenId(id)
-    const filePath = (flatIdDeps[flatId] = depsInfo[id].src!)
-    let exportsData: ExportsData
+    const flatId = flattenId(id);
+    const filePath = (flatIdDeps[flatId] = depsInfo[id].src!);
+    let exportsData: ExportsData;
     if (config.optimizeDeps.extensions?.some((ext) => filePath.endsWith(ext))) {
       // For custom supported extensions, build the entry file to transform it into JS,
       // and then parse with es-module-lexer. Note that the `bundle` option is not `true`,
@@ -409,50 +413,50 @@ export async function runOptimizeDeps(
         plugins,
         entryPoints: [filePath],
         write: false,
-        format: 'esm'
-      })
-      exportsData = parse(result.outputFiles[0].text) as ExportsData
+        format: 'esm',
+      });
+      exportsData = parse(result.outputFiles[0].text) as ExportsData;
     } else {
-      const entryContent = fs.readFileSync(filePath, 'utf-8')
+      const entryContent = fs.readFileSync(filePath, 'utf-8');
       try {
-        exportsData = parse(entryContent) as ExportsData
+        exportsData = parse(entryContent) as ExportsData;
       } catch {
-        const loader = esbuildOptions.loader?.[path.extname(filePath)] || 'jsx'
+        const loader = esbuildOptions.loader?.[path.extname(filePath)] || 'jsx';
         debug(
           `Unable to parse dependency: ${id}. Trying again with a ${loader} transform.`
-        )
+        );
         const transformed = await transformWithEsbuild(entryContent, filePath, {
-          loader
-        })
+          loader,
+        });
         // Ensure that optimization won't fail by defaulting '.js' to the JSX parser.
         // This is useful for packages such as Gatsby.
         esbuildOptions.loader = {
           '.js': 'jsx',
-          ...esbuildOptions.loader
-        }
-        exportsData = parse(transformed.code) as ExportsData
+          ...esbuildOptions.loader,
+        };
+        exportsData = parse(transformed.code) as ExportsData;
       }
       for (const { ss, se } of exportsData[0]) {
-        const exp = entryContent.slice(ss, se)
+        const exp = entryContent.slice(ss, se);
         if (/export\s+\*\s+from/.test(exp)) {
-          exportsData.hasReExports = true
+          exportsData.hasReExports = true;
         }
       }
     }
 
-    idToExports[id] = exportsData
-    flatIdToExports[flatId] = exportsData
+    idToExports[id] = exportsData;
+    flatIdToExports[flatId] = exportsData;
   }
 
   const define: Record<string, string> = {
-    'process.env.NODE_ENV': JSON.stringify(config.mode)
-  }
+    'process.env.NODE_ENV': JSON.stringify(config.mode),
+  };
   for (const key in config.define) {
-    const value = config.define[key]
-    define[key] = typeof value === 'string' ? value : JSON.stringify(value)
+    const value = config.define[key];
+    define[key] = typeof value === 'string' ? value : JSON.stringify(value);
   }
 
-  const start = performance.now()
+  const start = performance.now();
 
   const result = await build({
     absWorkingDir: process.cwd(),
@@ -470,21 +474,21 @@ export async function runOptimizeDeps(
     define,
     plugins: [
       ...plugins,
-      esbuildDepPlugin(flatIdDeps, flatIdToExports, config)
+      esbuildDepPlugin(flatIdDeps, flatIdToExports, config),
     ],
-    ...esbuildOptions
-  })
+    ...esbuildOptions,
+  });
 
-  const meta = result.metafile!
+  const meta = result.metafile!;
 
   // the paths in `meta.outputs` are relative to `process.cwd()`
   const processingCacheDirOutputPath = path.relative(
     process.cwd(),
     processingCacheDir
-  )
+  );
 
   for (const id in depsInfo) {
-    const output = esbuildOutputFromId(meta.outputs, id, processingCacheDir)
+    const output = esbuildOutputFromId(meta.outputs, id, processingCacheDir);
 
     addOptimizedDepInfo(metadata, 'optimized', {
       ...depsInfo[id],
@@ -494,16 +498,16 @@ export async function runOptimizeDeps(
       fileHash: getHash(
         metadata.hash + depsInfo[id].file + JSON.stringify(output.imports)
       ),
-      browserHash: metadata.browserHash
-    })
+      browserHash: metadata.browserHash,
+    });
   }
 
   for (const o of Object.keys(meta.outputs)) {
     if (!o.match(jsMapExtensionRE)) {
       const id = path
         .relative(processingCacheDirOutputPath, o)
-        .replace(jsExtensionRE, '')
-      const file = getOptimizedDepPath(id, config)
+        .replace(jsExtensionRE, '');
+      const file = getOptimizedDepPath(id, config);
       if (
         !findOptimizedDepInfoInRecord(
           metadata.optimized,
@@ -514,72 +518,72 @@ export async function runOptimizeDeps(
           id,
           file,
           needsInterop: false,
-          browserHash: metadata.browserHash
-        })
+          browserHash: metadata.browserHash,
+        });
       }
     }
   }
 
-  const dataPath = path.join(processingCacheDir, '_metadata.json')
-  writeFile(dataPath, stringifyOptimizedDepsMetadata(metadata, depsCacheDir))
+  const dataPath = path.join(processingCacheDir, '_metadata.json');
+  writeFile(dataPath, stringifyOptimizedDepsMetadata(metadata, depsCacheDir));
 
-  debug(`deps bundled in ${(performance.now() - start).toFixed(2)}ms`)
+  debug(`deps bundled in ${(performance.now() - start).toFixed(2)}ms`);
 
   return {
     metadata,
     commit() {
       // Write metadata file, delete `deps` folder and rename the new `processing` folder to `deps` in sync
-      commitProcessingDepsCacheSync()
+      commitProcessingDepsCacheSync();
     },
-    cancel
-  }
+    cancel,
+  };
 
   function commitProcessingDepsCacheSync() {
     // Processing is done, we can now replace the depsCacheDir with processingCacheDir
     // Rewire the file paths from the temporal processing dir to the final deps cache dir
-    removeDirSync(depsCacheDir)
-    fs.renameSync(processingCacheDir, depsCacheDir)
+    removeDirSync(depsCacheDir);
+    fs.renameSync(processingCacheDir, depsCacheDir);
   }
 
   function cancel() {
-    removeDirSync(processingCacheDir)
+    removeDirSync(processingCacheDir);
   }
 }
 
 function removeDirSync(dir: string) {
   if (fs.existsSync(dir)) {
-    const rmSync = fs.rmSync ?? fs.rmdirSync // TODO: Remove after support for Node 12 is dropped
-    rmSync(dir, { recursive: true })
+    const rmSync = fs.rmSync ?? fs.rmdirSync; // TODO: Remove after support for Node 12 is dropped
+    rmSync(dir, { recursive: true });
   }
 }
 
 export async function findKnownImports(
   config: ResolvedConfig
 ): Promise<string[]> {
-  const deps = (await scanImports(config)).deps
-  await addManuallyIncludedOptimizeDeps(deps, config)
-  return Object.keys(deps)
+  const deps = (await scanImports(config)).deps;
+  await addManuallyIncludedOptimizeDeps(deps, config);
+  return Object.keys(deps);
 }
 
 async function addManuallyIncludedOptimizeDeps(
   deps: Record<string, string>,
   config: ResolvedConfig
 ): Promise<void> {
-  const include = config.optimizeDeps?.include
+  const include = config.optimizeDeps?.include;
   if (include) {
-    const resolve = config.createResolver({ asSrc: false })
+    const resolve = config.createResolver({ asSrc: false });
     for (const id of include) {
       // normalize 'foo   >bar` as 'foo > bar' to prevent same id being added
       // and for pretty printing
-      const normalizedId = normalizeId(id)
+      const normalizedId = normalizeId(id);
       if (!deps[normalizedId]) {
-        const entry = await resolve(id)
+        const entry = await resolve(id);
         if (entry) {
-          deps[normalizedId] = entry
+          deps[normalizedId] = entry;
         } else {
           throw new Error(
             `Failed to resolve force included dependency: ${colors.cyan(id)}`
-          )
+          );
         }
       }
     }
@@ -587,11 +591,11 @@ async function addManuallyIncludedOptimizeDeps(
 }
 
 export function newDepOptimizationProcessing(): DepOptimizationProcessing {
-  let resolve: () => void
+  let resolve: () => void;
   const promise = new Promise((_resolve) => {
-    resolve = _resolve
-  }) as Promise<void>
-  return { promise, resolve: resolve! }
+    resolve = _resolve;
+  }) as Promise<void>;
+  return { promise, resolve: resolve! };
 }
 
 // Convert to { id: src }
@@ -600,44 +604,44 @@ export function depsFromOptimizedDepInfo(
 ) {
   return Object.fromEntries(
     Object.entries(depsInfo).map((d) => [d[0], d[1].src!])
-  )
+  );
 }
 
 export function getOptimizedDepPath(id: string, config: ResolvedConfig) {
   return normalizePath(
     path.resolve(getDepsCacheDir(config), flattenId(id) + '.js')
-  )
+  );
 }
 
 export function getDepsCacheDir(config: ResolvedConfig) {
-  return normalizePath(path.resolve(config.cacheDir, 'deps'))
+  return normalizePath(path.resolve(config.cacheDir, 'deps'));
 }
 
 function getProcessingDepsCacheDir(config: ResolvedConfig) {
-  return normalizePath(path.resolve(config.cacheDir, 'processing'))
+  return normalizePath(path.resolve(config.cacheDir, 'processing'));
 }
 
 export function isOptimizedDepFile(id: string, config: ResolvedConfig) {
-  return id.startsWith(getDepsCacheDir(config))
+  return id.startsWith(getDepsCacheDir(config));
 }
 
 export function createIsOptimizedDepUrl(config: ResolvedConfig) {
-  const { root } = config
-  const depsCacheDir = getDepsCacheDir(config)
+  const { root } = config;
+  const depsCacheDir = getDepsCacheDir(config);
 
   // determine the url prefix of files inside cache directory
-  const depsCacheDirRelative = normalizePath(path.relative(root, depsCacheDir))
+  const depsCacheDirRelative = normalizePath(path.relative(root, depsCacheDir));
   const depsCacheDirPrefix = depsCacheDirRelative.startsWith('../')
     ? // if the cache directory is outside root, the url prefix would be something
       // like '/@fs/absolute/path/to/node_modules/.vite'
       `/@fs/${normalizePath(depsCacheDir).replace(/^\//, '')}`
     : // if the cache directory is inside root, the url prefix would be something
       // like '/node_modules/.vite'
-      `/${depsCacheDirRelative}`
+      `/${depsCacheDirRelative}`;
 
   return function isOptimizedDepUrl(url: string): boolean {
-    return url.startsWith(depsCacheDirPrefix)
-  }
+    return url.startsWith(depsCacheDirPrefix);
+  };
 }
 
 function parseOptimizedDepsMetadata(
@@ -650,17 +654,17 @@ function parseOptimizedDepsMetadata(
       // Paths can be absolute or relative to the deps cache dir where
       // the _metadata.json is located
       if (key === 'file' || key === 'src') {
-        return normalizePath(path.resolve(depsCacheDir, value))
+        return normalizePath(path.resolve(depsCacheDir, value));
       }
-      return value
+      return value;
     }
-  )
+  );
   if (
     !chunks ||
     Object.values(optimized).some((depInfo: any) => !depInfo.fileHash)
   ) {
     // outdated _metadata.json version, ignore
-    return
+    return;
   }
   const metadata = {
     hash,
@@ -668,24 +672,24 @@ function parseOptimizedDepsMetadata(
     optimized: {},
     discovered: {},
     chunks: {},
-    depInfoList: []
-  }
+    depInfoList: [],
+  };
   for (const id of Object.keys(optimized)) {
     addOptimizedDepInfo(metadata, 'optimized', {
       ...optimized[id],
       id,
-      browserHash
-    })
+      browserHash,
+    });
   }
   for (const id of Object.keys(chunks)) {
     addOptimizedDepInfo(metadata, 'chunks', {
       ...chunks[id],
       id,
       browserHash,
-      needsInterop: false
-    })
+      needsInterop: false,
+    });
   }
-  return metadata
+  return metadata;
 }
 
 /**
@@ -698,7 +702,7 @@ function stringifyOptimizedDepsMetadata(
   metadata: DepOptimizationMetadata,
   depsCacheDir: string
 ) {
-  const { hash, browserHash, optimized, chunks } = metadata
+  const { hash, browserHash, optimized, chunks } = metadata;
   return JSON.stringify(
     {
       hash,
@@ -711,25 +715,25 @@ function stringifyOptimizedDepsMetadata(
               src,
               file,
               fileHash,
-              needsInterop
-            }
+              needsInterop,
+            },
           ]
         )
       ),
       chunks: Object.fromEntries(
         Object.values(chunks).map(({ id, file }) => [id, { file }])
-      )
+      ),
     },
     (key: string, value: string) => {
       // Paths can be absolute or relative to the deps cache dir where
       // the _metadata.json is located
       if (key === 'file' || key === 'src') {
-        return normalizePath(path.relative(depsCacheDir, value))
+        return normalizePath(path.relative(depsCacheDir, value));
       }
-      return value
+      return value;
     },
     2
-  )
+  );
 }
 
 function esbuildOutputFromId(
@@ -737,18 +741,18 @@ function esbuildOutputFromId(
   id: string,
   cacheDirOutputPath: string
 ): any {
-  const flatId = flattenId(id) + '.js'
+  const flatId = flattenId(id) + '.js';
   return outputs[
     normalizePath(
       path.relative(process.cwd(), path.join(cacheDirOutputPath, flatId))
     )
-  ]
+  ];
 }
 
 // https://github.com/vitejs/vite/issues/1724#issuecomment-767619642
 // a list of modules that pretends to be ESM but still uses `require`.
 // this causes esbuild to wrap them as CJS even when its entry appears to be ESM.
-const KNOWN_INTEROP_IDS = new Set(['moment'])
+const KNOWN_INTEROP_IDS = new Set(['moment']);
 
 function needsInterop(
   id: string,
@@ -756,47 +760,56 @@ function needsInterop(
   output: { exports: string[] }
 ): boolean {
   if (KNOWN_INTEROP_IDS.has(id)) {
-    return true
+    return true;
   }
-  const [imports, exports] = exportsData
+  const [imports, exports] = exportsData;
   // entry has no ESM syntax - likely CJS or UMD
   if (!exports.length && !imports.length) {
-    return true
+    return true;
   }
 
   // if a peer dependency used require() on a ESM dependency, esbuild turns the
   // ESM dependency's entry chunk into a single default export... detect
   // such cases by checking exports mismatch, and force interop.
-  const generatedExports: string[] = output.exports
+  const generatedExports: string[] = output.exports;
 
   if (
     !generatedExports ||
     (isSingleDefaultExport(generatedExports) && !isSingleDefaultExport(exports))
   ) {
-    return true
+    return true;
   }
-  return false
+  return false;
 }
 
 function isSingleDefaultExport(exports: readonly string[]) {
-  return exports.length === 1 && exports[0] === 'default'
+  return exports.length === 1 && exports[0] === 'default';
 }
 
-const lockfileFormats = ['package-lock.json', 'yarn.lock', 'pnpm-lock.yaml']
+const lockfileFormats = ['package-lock.json', 'yarn.lock', 'pnpm-lock.yaml'];
 
 export function getDepHash(config: ResolvedConfig): string {
-  let content = lookupFile(config.root, lockfileFormats) || ''
+  // 获取look文件内容
+  let content = lookupFile(config.root, lockfileFormats) || '';
   // also take config into account
   // only a subset of config options that can affect dep optimization
   content += JSON.stringify(
     {
+      // 开发生产环境
       mode: config.mode,
+      // 项目跟路径
       root: config.root,
+      // 全局常量替换方式
       define: config.define,
+      // resolve.xxx  例如： resolve.alias
       resolve: config.resolve,
+      // 设置最终构建的路蓝旗兼容目标
       buildTarget: config.build.target,
+      // 指定额外的picomatch模式作为静态资源处理。1. 从html导入它们或直接请求时，将被插件管道排除在外 2. 从js导入它们返回解析后的URL字符串
       assetsInclude: config.assetsInclude,
+      // 插件数组名称
       plugins: config.plugins.map((p) => p.name),
+      // 依赖优化配置
       optimizeDeps: {
         include: config.optimizeDeps?.include,
         exclude: config.optimizeDeps?.exclude,
@@ -804,18 +817,20 @@ export function getDepHash(config: ResolvedConfig): string {
           ...config.optimizeDeps?.esbuildOptions,
           plugins: config.optimizeDeps?.esbuildOptions?.plugins?.map(
             (p) => p.name
-          )
-        }
-      }
+          ),
+        },
+      },
     },
     (_, value) => {
+      // 函数和正则处理成字符串
       if (typeof value === 'function' || value instanceof RegExp) {
-        return value.toString()
+        return value.toString();
       }
-      return value
+      return value;
     }
-  )
-  return getHash(content)
+  );
+  // 生成hash
+  return getHash(content);
 }
 
 function getOptimizedBrowserHash(
@@ -823,11 +838,11 @@ function getOptimizedBrowserHash(
   deps: Record<string, string>,
   timestamp = ''
 ) {
-  return getHash(hash + JSON.stringify(deps) + timestamp)
+  return getHash(hash + JSON.stringify(deps) + timestamp);
 }
 
 export function getHash(text: string): string {
-  return createHash('sha256').update(text).digest('hex').substring(0, 8)
+  return createHash('sha256').update(text).digest('hex').substring(0, 8);
 }
 
 export function optimizedDepInfoFromId(
@@ -836,14 +851,14 @@ export function optimizedDepInfoFromId(
 ): OptimizedDepInfo | undefined {
   return (
     metadata.optimized[id] || metadata.discovered[id] || metadata.chunks[id]
-  )
+  );
 }
 
 export function optimizedDepInfoFromFile(
   metadata: DepOptimizationMetadata,
   file: string
 ): OptimizedDepInfo | undefined {
-  return metadata.depInfoList.find((depInfo) => depInfo.file === file)
+  return metadata.depInfoList.find((depInfo) => depInfo.file === file);
 }
 
 function findOptimizedDepInfoInRecord(
@@ -851,9 +866,9 @@ function findOptimizedDepInfoInRecord(
   callbackFn: (depInfo: OptimizedDepInfo, id: string) => any
 ): OptimizedDepInfo | undefined {
   for (const o of Object.keys(dependenciesInfo)) {
-    const info = dependenciesInfo[o]
+    const info = dependenciesInfo[o];
     if (callbackFn(info, o)) {
-      return info
+      return info;
     }
   }
 }
@@ -862,12 +877,12 @@ export async function optimizedDepNeedsInterop(
   metadata: DepOptimizationMetadata,
   file: string
 ): Promise<boolean | undefined> {
-  const depInfo = optimizedDepInfoFromFile(metadata, file)
+  const depInfo = optimizedDepInfoFromFile(metadata, file);
 
-  if (!depInfo) return undefined
+  if (!depInfo) return undefined;
 
   // Wait until the dependency has been pre-bundled
-  await depInfo.processing
+  await depInfo.processing;
 
-  return depInfo?.needsInterop
+  return depInfo?.needsInterop;
 }

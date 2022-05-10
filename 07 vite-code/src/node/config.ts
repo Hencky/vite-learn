@@ -434,7 +434,7 @@ export async function resolveConfig(
 
   // create an internal resolver to be used in special scenarios, e.g.
   // optimizer & handling css @imports
-  // 路径解析器，用于依赖预构建
+  // 路径解析器，返回一个函数，后用于依赖预构建
   const createResolver: ResolvedConfig['createResolver'] = (options) => {
     let aliasContainer: PluginContainer | undefined
     let resolverContainer: PluginContainer | undefined
@@ -547,6 +547,8 @@ export async function resolveConfig(
   await Promise.all(
     resolved.worker.plugins.map((p) => p.configResolved?.(workerResolved))
   )
+
+  // 生成完整的插件列表
   ;(resolved.plugins as Plugin[]) = await resolvePlugins(
     resolved,
     prePlugins,
