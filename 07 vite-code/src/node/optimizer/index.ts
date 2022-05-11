@@ -275,10 +275,12 @@ export function loadCachedDepOptimizationMetadata(
  * Initial optimizeDeps at server start. Perform a fast scan using esbuild to
  * find deps to pre-bundle and include user hard-coded dependencies
  */
+// 依赖扫描
 export async function discoverProjectDependencies(
   config: ResolvedConfig,
   timestamp?: string
 ): Promise<Record<string, OptimizedDepInfo>> {
+  // 扫描
   const { deps, missing } = await scanImports(config);
 
   const missingIds = Object.keys(missing);
@@ -474,6 +476,7 @@ export async function runOptimizeDeps(
     define,
     plugins: [
       ...plugins,
+      // 预构建专用插件
       esbuildDepPlugin(flatIdDeps, flatIdToExports, config),
     ],
     ...esbuildOptions,

@@ -58,8 +58,10 @@ export async function scanImports(config: ResolvedConfig): Promise<{
   const buildInput = config.build.rollupOptions?.input
 
   if (explicitEntryPatterns) {
+    // 先从 optimizeDeps.entries 中寻找入口，支持 glob 语法
     entries = await globEntries(explicitEntryPatterns, config)
   } else if (buildInput) {
+    // 从 build.rollupOptions.input 配置中找入口
     const resolvePath = (p: string) => path.resolve(config.root, p)
     if (typeof buildInput === 'string') {
       entries = [resolvePath(buildInput)]
@@ -71,6 +73,7 @@ export async function scanImports(config: ResolvedConfig): Promise<{
       throw new Error('invalid rollupOptions.input value.')
     }
   } else {
+    // 没有上面的配置，自动从根目录开始寻找
     entries = await globEntries('**/*.html', config)
   }
 
@@ -100,6 +103,7 @@ export async function scanImports(config: ResolvedConfig): Promise<{
   const deps: Record<string, string> = {}
   const missing: Record<string, string> = {}
   const container = await createPluginContainer(config)
+  // 扫描用到的Esbuild插件
   const plugin = esbuildScanPlugin(config, container, deps, missing, entries)
 
   const { plugins = [], ...esbuildOptions } =
@@ -109,6 +113,7 @@ export async function scanImports(config: ResolvedConfig): Promise<{
     entries.map((entry) =>
       build({
         absWorkingDir: process.cwd(),
+        // 产物不用写入磁盘
         write: false,
         entryPoints: [entry],
         bundle: true,
@@ -233,6 +238,7 @@ function esbuildScanPlugin(
       })
 
       // html types: extract script contents -----------------------------------
+      // 标记 类html 文件的namespace
       build.onResolve({ filter: htmlTypesRE }, async ({ path, importer }) => {
         const resolved = await resolve(path, importer)
         if (!resolved) return
