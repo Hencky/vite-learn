@@ -280,7 +280,7 @@ export async function discoverProjectDependencies(
   config: ResolvedConfig,
   timestamp?: string
 ): Promise<Record<string, OptimizedDepInfo>> {
-  // 扫描
+  // 扫描，获取入口
   const { deps, missing } = await scanImports(config);
 
   const missingIds = Object.keys(missing);
@@ -403,7 +403,9 @@ export async function runOptimizeDeps(
 
   await init;
   for (const id in depsInfo) {
+    // 扁平化路径
     const flatId = flattenId(id);
+    // 填入flatIdDeps表，记录flatId -> 真实路径 映射
     const filePath = (flatIdDeps[flatId] = depsInfo[id].src!);
     let exportsData: ExportsData;
     if (config.optimizeDeps.extensions?.some((ext) => filePath.endsWith(ext))) {
@@ -529,7 +531,6 @@ export async function runOptimizeDeps(
       }
     }
   }
-
 
   // 原信息写入磁盘
   const dataPath = path.join(processingCacheDir, '_metadata.json');

@@ -104,6 +104,7 @@ export function esbuildDepPlugin(
         }
       }
 
+      // 裸模块路径
       build.onResolve(
         { filter: /^[\w@][^:]/ },
         async ({ path: id, importer, kind }) => {
