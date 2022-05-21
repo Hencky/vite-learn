@@ -460,8 +460,10 @@ export async function runOptimizeDeps(
 
   const start = performance.now();
 
+  // 依赖打包
   const result = await build({
     absWorkingDir: process.cwd(),
+    // 所有依赖的id数组，在插件中会转换为真实的路径
     entryPoints: Object.keys(flatIdDeps),
     bundle: true,
     format: 'esm',
@@ -482,6 +484,7 @@ export async function runOptimizeDeps(
     ...esbuildOptions,
   });
 
+  // 打包元信息，后续会根据这份信息生成_metadata.json
   const meta = result.metafile!;
 
   // the paths in `meta.outputs` are relative to `process.cwd()`
@@ -527,6 +530,8 @@ export async function runOptimizeDeps(
     }
   }
 
+
+  // 原信息写入磁盘
   const dataPath = path.join(processingCacheDir, '_metadata.json');
   writeFile(dataPath, stringifyOptimizedDepsMetadata(metadata, depsCacheDir));
 
@@ -845,6 +850,7 @@ function getOptimizedBrowserHash(
 }
 
 export function getHash(text: string): string {
+  // 调用crypto库中的createHash方法，创建一个hash对象
   return createHash('sha256').update(text).digest('hex').substring(0, 8);
 }
 
