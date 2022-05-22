@@ -158,6 +158,7 @@ export function esbuildDepPlugin(
       // the actual module, esbuild will create duplicated copies of the same
       // module!
       const root = path.resolve(config.root)
+      // 代理模块加载
       build.onLoad({ filter: /.*/, namespace: 'dep' }, ({ path: id }) => {
         const entryFile = qualified[id]
 
